@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using Newtonsoft.Json.Linq;
 
 namespace Thirdweb.Tests.Utilities;
 
@@ -506,7 +507,7 @@ public class UtilsTests : BaseTests
         var verifyingContract = await pkWallet.GetAddress(); // doesn't matter here
         var typedDataRaw = EIP712.GetTypedDefinition_SmartAccount_AccountMessage("Account", "1", 137, verifyingContract);
         var json = Utils.ToJsonExternalWalletFriendly(typedDataRaw, msg);
-        var jsonObject = Newtonsoft.Json.Linq.JObject.Parse(json);
+        var jsonObject = JObject.Parse(json);
         var internalMsg = jsonObject.SelectToken("$.message.message");
         Assert.NotNull(internalMsg);
         Assert.Equal("0x01020304", internalMsg);
@@ -762,5 +763,107 @@ public class UtilsTests : BaseTests
         Assert.True(maxFee > 0);
         Assert.True(maxPrio > 0);
         Assert.Equal(maxFee, maxPrio);
+    }
+
+    [Fact]
+    public void PreprocessTypedDataJson_FormatsBigIntegers()
+    {
+        // Arrange
+        var inputJson =
+            /*lang=json,strict*/
+            @"
+        {
+            ""from"": 973250616940336452028326648501327235277017847475,
+            ""data"": ""0x"",
+            ""nested"": {
+                ""value"": 4294967295
+            },
+            ""array"": [
+                123,
+                973250616940336452028326648501327235277017847475
+            ]
+        }";
+
+        var expectedJson =
+            /*lang=json,strict*/
+            @"
+        {
+            ""from"": ""973250616940336452028326648501327235277017847475"",
+            ""data"": ""0x"",
+            ""nested"": {
+                ""value"": 4294967295
+            },
+            ""array"": [
+                123,
+                ""973250616940336452028326648501327235277017847475""
+            ]
+        }";
+
+        // Act
+        var processedJson = Utils.PreprocessTypedDataJson(inputJson);
+
+        // Assert
+        var expectedJObject = JObject.Parse(expectedJson);
+        var processedJObject = JObject.Parse(processedJson);
+
+        Assert.Equal(expectedJObject, processedJObject);
+    }
+
+    [Fact]
+    public void PreprocessTypedDataJson_NoLargeNumbers_NoChange()
+    {
+        // Arrange
+        var inputJson =
+            /*lang=json,strict*/
+            @"
+        {
+            ""value"": 123,
+            ""nested"": {
+                ""value"": 456
+            },
+            ""array"": [1, 2, 3]
+        }";
+
+        // Act
+        var processedJson = Utils.PreprocessTypedDataJson(inputJson);
+        var expectedJObject = JObject.Parse(inputJson);
+        var processedJObject = JObject.Parse(processedJson);
+
+        // Assert
+        Assert.Equal(expectedJObject, processedJObject);
+    }
+
+    [Fact]
+    public void PreprocessTypedDataJson_NestedLargeNumbers()
+    {
+        // Arrange
+        var inputJson =
+            /*lang=json,strict*/
+            @"
+        {
+            ""nested"": {
+                ""value"": 973250616940336452028326648501327235277017847475
+            },
+            ""array"": [123, 973250616940336452028326648501327235277017847475]
+        }";
+
+        var expectedJson =
+            /*lang=json,strict*/
+            @"
+        {
+            ""nested"": {
+                ""value"": ""973250616940336452028326648501327235277017847475""
+            },
+            ""array"": [123, ""973250616940336452028326648501327235277017847475""]
+        }";
+
+        // Act
+        var processedJson = Utils.PreprocessTypedDataJson(inputJson);
+
+        // Assert
+        var expectedJObject = JObject.Parse(expectedJson);
+        var processedJObject = JObject.Parse(processedJson);
+
+        Assert.Equal(expectedJObject, processedJObject);
     }
 }
