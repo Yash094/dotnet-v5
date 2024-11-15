@@ -1177,9 +1177,10 @@ public static class ThirdwebExtensions
     /// </summary>
     /// <param name="contract">The contract to interact with.</param>
     /// <param name="tokenId">The ID of the token.</param>
+    /// <param name="fillOwner">A boolean indicating whether to fill the owner details. Defaults to true.</param>
     /// <returns>A task representing the asynchronous operation, with an NFT result containing the token details.</returns>
     /// <exception cref="ArgumentNullException">Thrown when the contract is null.</exception>
-    public static async Task<NFT> ERC721_GetNFT(this ThirdwebContract contract, BigInteger tokenId)
+    public static async Task<NFT> ERC721_GetNFT(this ThirdwebContract contract, BigInteger tokenId, bool fillOwner = true)
     {
         if (contract == null)
         {
@@ -1198,14 +1199,17 @@ public static class ThirdwebExtensions
         }
         metadata.Id = tokenId.ToString();
 
-        string owner;
-        try
+        var owner = Constants.ADDRESS_ZERO;
+        if (fillOwner)
         {
-            owner = await contract.ERC721_OwnerOf(tokenId).ConfigureAwait(false);
-        }
-        catch (Exception)
-        {
-            owner = Constants.ADDRESS_ZERO;
+            try
+            {
+                owner = await contract.ERC721_OwnerOf(tokenId).ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                owner = Constants.ADDRESS_ZERO;
+            }
         }
 
         return new NFT
@@ -1214,6 +1218,7 @@ public static class ThirdwebExtensions
             Owner = owner,
             Type = NFTType.ERC721,
             Supply = 1,
+            QuantityOwned = 1
         };
     }
 
@@ -1223,9 +1228,10 @@ public static class ThirdwebExtensions
     /// <param name="contract">The contract to interact with.</param>
     /// <param name="startTokenId">The starting token ID (inclusive). Defaults to 0 if not specified.</param>
     /// <param name="count">The number of tokens to retrieve. Defaults to 100 if not specified.</param>
+    /// <param name="fillOwner">A boolean indicating whether to fill the owner details. Defaults to true.</param>
     /// <returns>A task representing the asynchronous operation, with a list of NFT results containing the token details.</returns>
     /// <exception cref="ArgumentNullException">Thrown when the contract is null.</exception>
-    public static async Task<List<NFT>> ERC721_GetAllNFTs(this ThirdwebContract contract, int startTokenId = 0, int count = 100)
+    public static async Task<List<NFT>> ERC721_GetAllNFTs(this ThirdwebContract contract, int startTokenId = 0, int count = 100, bool fillOwner = true)
     {
         if (contract == null)
         {
@@ -1238,7 +1244,7 @@ public static class ThirdwebExtensions
         var nftTasks = new List<Task<NFT>>();
         for (var i = startTokenId; i < startTokenId + count; i++)
         {
-            nftTasks.Add(contract.ERC721_GetNFT(i));
+            nftTasks.Add(contract.ERC721_GetNFT(i, fillOwner));
         }
 
         var allNfts = await Task.WhenAll(nftTasks).ConfigureAwait(false);
@@ -1322,9 +1328,10 @@ public static class ThirdwebExtensions
     /// </summary>
     /// <param name="contract">The contract to interact with.</param>
     /// <param name="tokenId">The ID of the token.</param>
+    /// <param name="fillSupply">A boolean indicating whether to fill the supply. Defaults to true if not specified.</param>
     /// <returns>A task representing the asynchronous operation, with an NFT result containing the token details.</returns>
     /// <exception cref="ArgumentNullException">Thrown when the contract is null.</exception>
-    public static async Task<NFT> ERC1155_GetNFT(this ThirdwebContract contract, BigInteger tokenId)
+    public static async Task<NFT> ERC1155_GetNFT(this ThirdwebContract contract, BigInteger tokenId, bool fillSupply = true)
     {
         if (contract == null)
         {
@@ -1342,21 +1349,24 @@ public static class ThirdwebExtensions
             metadata = new NFTMetadata { Description = e.Message };
         }
         metadata.Id = tokenId.ToString();
-        var owner = string.Empty;
-        BigInteger supply;
-        try
+
+        var supply = BigInteger.MinusOne;
+        if (fillSupply)
         {
-            supply = await contract.ERC1155_TotalSupply(tokenId).ConfigureAwait(false);
-        }
-        catch (Exception)
-        {
-            supply = BigInteger.MinusOne;
+            try
+            {
+                supply = await contract.ERC1155_TotalSupply(tokenId).ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                supply = BigInteger.MinusOne;
+            }
         }
 
         return new NFT
         {
             Metadata = metadata,
-            Owner = owner,
+            Owner = "",
             Type = NFTType.ERC1155,
             Supply = supply,
         };
@@ -1368,31 +1378,32 @@ public static class ThirdwebExtensions
     /// <param name="contract">The contract to interact with.</param>
     /// <param name="startTokenId">The starting token ID (inclusive). Defaults to 0 if not specified.</param>
     /// <param name="count">The number of tokens to retrieve. Defaults to the 100 if not specified.</param>
+    /// <param name="fillSupply">A boolean indicating whether to fill the supply. Defaults to true if not specified.</param>
     /// <returns>A task representing the asynchronous operation, with a list of NFT results containing the token details.</returns>
     /// <exception cref="ArgumentNullException">Thrown when the contract is null.</exception>
-    public static async Task<List<NFT>> ERC1155_GetAllNFTs(this ThirdwebContract contract, int startTokenId = 0, int count = 100)
+    public static async Task<List<NFT>> ERC1155_GetAllNFTs(this ThirdwebContract contract, int startTokenId = 0, int count = 100, bool fillSupply = true)
     {
         if (contract == null)
         {
             throw new ArgumentNullException(nameof(contract));
         }
 
-        BigInteger totalSupply;
+        BigInteger totalCount;
         try
         {
             // Not part of IERC1155 so we fallback just in case
-            totalSupply = await contract.ERC1155_TotalSupply().ConfigureAwait(false);
+            totalCount = await contract.ERC1155_TotalSupply().ConfigureAwait(false);
         }
         catch
         {
-            totalSupply = int.MaxValue;
+            totalCount = int.MaxValue;
         }
-        count = Math.Min(count, (int)(totalSupply - startTokenId));
+        count = Math.Min(count, (int)(totalCount - startTokenId));
 
         var nftTasks = new List<Task<NFT>>();
         for (var i = startTokenId; i < startTokenId + count; i++)
         {
-            nftTasks.Add(contract.ERC1155_GetNFT(i));
+            nftTasks.Add(contract.ERC1155_GetNFT(i, fillSupply));
         }
 
         var allNfts = await Task.WhenAll(nftTasks).ConfigureAwait(false);
@@ -1454,6 +1465,10 @@ public static class ThirdwebExtensions
         }
 
         var ownerNfts = await Task.WhenAll(ownerNftTasks).ConfigureAwait(false);
+        for (var i = 0; i < ownerNfts.Length; i++)
+        {
+            ownerNfts[i].QuantityOwned = balanceOfBatch[i];
+        }
         return ownerNfts.ToList();
     }
 
