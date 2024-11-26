@@ -18,7 +18,8 @@ public class BuyWithFiatQuoteParams(
     string toAmount = null,
     string toAmountWei = null,
     double? maxSlippageBPS = null,
-    bool isTestMode = false
+    bool isTestMode = false,
+    string preferredProvider = null
     )
 {
     /// <summary>
@@ -38,7 +39,12 @@ public class BuyWithFiatQuoteParams(
     /// </summary>
     [JsonProperty("fromAmountUnits")]
     public string FromAmountUnits { get; set; } = fromAmountUnits;
-
+    
+    /// <summary>
+    /// The provider to use on the application for fiat
+    /// </summary>
+    [JsonProperty("preferredProvider")]
+    public string PreferredProvider { get; set; } = preferredProvider;
     /// <summary>
     /// The address to receive the purchased tokens.
     /// </summary>
