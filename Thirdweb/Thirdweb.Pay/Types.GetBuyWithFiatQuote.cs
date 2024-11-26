@@ -41,7 +41,7 @@ public class BuyWithFiatQuoteParams(
     public string FromAmountUnits { get; set; } = fromAmountUnits;
     
     /// <summary>
-    /// The provider to use on the application for fiat
+    /// The provider to use on the application for thirdweb pay
     /// </summary>
     [JsonProperty("preferredProvider")]
     public string PreferredProvider { get; set; } = preferredProvider;
