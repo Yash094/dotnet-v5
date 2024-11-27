@@ -39,7 +39,7 @@ public class BuyWithFiatQuoteParams(
     /// </summary>
     [JsonProperty("fromAmountUnits")]
     public string FromAmountUnits { get; set; } = fromAmountUnits;
-    
+
     /// <summary>
     /// The provider to use on the application for thirdweb pay
     /// </summary>
